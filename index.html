@@ -737,6 +737,28 @@ try{
 }catch(e){}
 function savePrefs(){ try{ localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); }catch(e){} }
 
+/* Auto-connect via link: ?connect=<sync URL>&token=<token> fills Settings
+   with zero typing — a QR code or a texted link can onboard a phone this
+   way. Typing or autocorrect mangling a character in the middle of a long
+   URL is exactly what breaks a manual paste, and this removes that step
+   entirely. Strips the token out of the address bar immediately after
+   reading it, so it doesn't linger in history or on screen. */
+let autoConnected = false;
+(function autoConnectFromLink(){
+  try{
+    const params = new URLSearchParams(location.search);
+    const cUrl = params.get('connect');
+    const cTok = params.get('token');
+    if(cUrl && cTok){
+      prefs.syncUrl = cUrl.trim();
+      prefs.syncToken = cTok.trim();
+      savePrefs();
+      autoConnected = true;
+      history.replaceState(null, '', location.pathname);
+    }
+  }catch(e){}
+})();
+
 /* --------------------------------------------------------------- state --- */
 let doc = seedDoc();           // the shared truck document
 let view = 'today';            // today | stock | waste | money
@@ -2394,7 +2416,9 @@ document.addEventListener('visibilitychange', () => {
 document.addEventListener('visibilitychange', () => { if(document.hidden && saveQueued) writeLocal(doc); });
 window.addEventListener('pagehide', () => { if(saveQueued) writeLocal(doc); });
 
-loadAll();
+loadAll().then(() => {
+  if(autoConnected) flash(syncOk ? t('connected') : t('syncFail'));
+});
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
