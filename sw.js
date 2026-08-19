@@ -5,9 +5,10 @@
    itself (localStorage first, then a merge-sync to Apps Script). This only
    caches the files that make up the app.
 
-   Bump CACHE_NAME whenever you upload a new index.html so old copies get
-   thrown away rather than lingering on someone's phone. */
-const CACHE_NAME = 'montanas-v1';
+   Bump the version suffix whenever you upload a new index.html so old copies
+   get thrown away rather than lingering on someone's phone. */
+const CACHE_PREFIX = 'montanas-';
+const CACHE_NAME = CACHE_PREFIX + 'v1';
 const APP_SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
@@ -21,9 +22,17 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
+  /* Only ever delete THIS app's older caches. Cache Storage is scoped per
+     ORIGIN, and jaylaantaylor-boop.github.io serves all of our apps, so the
+     previous `k !== CACHE_NAME` wiped Mamma Mia's, Main Kitchen's and
+     Panatieri's offline copies too — whichever app was opened last won, and
+     the others were left with nothing to fall back on with no signal. */
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(
+        keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME)
+            .map((k) => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });
@@ -47,8 +56,9 @@ self.addEventListener('fetch', (e) => {
         // Not an OK response. On the truck's wifi this is usually a captive
         // portal redirecting us — serving that would replace the app with a
         // "sign in to continue" page. Prefer the cached copy when we have one.
-        return caches.match(e.request).then((cached) => cached || res);
+        return caches.open(CACHE_NAME).then((c) => c.match(e.request)).then((cached) => cached || res);
       })
-      .catch(() => caches.match(e.request).then((cached) => cached || caches.match('./index.html')))
+      .catch(() => caches.open(CACHE_NAME).then((cache) =>
+        cache.match(e.request).then((cached) => cached || cache.match('./index.html'))))
   );
 });
