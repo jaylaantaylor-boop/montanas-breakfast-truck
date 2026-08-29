@@ -8,7 +8,7 @@
    Bump the version suffix whenever you upload a new index.html so old copies
    get thrown away rather than lingering on someone's phone. */
 const CACHE_PREFIX = 'montanas-';
-const CACHE_NAME = CACHE_PREFIX + 'v2';
+const CACHE_NAME = CACHE_PREFIX + 'v3';
 const APP_SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
